@@ -1,0 +1,68 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+
+  # ─── BACKEND DEPLOY ───────────────────────────────────────────────────────
+  deploy-backend:
+    name: Deploy Backend to Render
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger Render deploy hook
+        run: |
+          curl --fail --silent --show-error \
+            -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" \
+            -o /dev/null \
+            -w "HTTP status: %{http_code}\n"
+
+      - name: Confirm deploy triggered
+        run: echo "Backend deploy triggered at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+
+  # ─── FRONTEND DEPLOY ──────────────────────────────────────────────────────
+  # Vercel deploys automatically on push to main via its own GitHub integration.
+  # No workflow step needed here. This job exists to log and coordinate timing.
+  frontend-status:
+    name: Frontend Deploy — Vercel (auto)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Log Vercel deploy
+        run: echo "Vercel deployment triggered automatically by GitHub integration at $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+
+  # ─── POST-DEPLOY HEALTH CHECK ─────────────────────────────────────────────
+  health-check:
+    name: Health Check
+    runs-on: ubuntu-latest
+    needs: deploy-backend
+
+    # Wait 3 minutes for Render to build and start the service
+    steps:
+      - name: Wait for Render build
+        run: sleep 180
+
+      - name: Check backend health endpoint
+        run: |
+          STATUS=$(curl --silent --output /dev/null --write-out "%{http_code}" \
+            https://api.javacup.dev/api/v1/health)
+          echo "Health check status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "Health check FAILED — backend may not be responding."
+            exit 1
+          fi
+          echo "Health check PASSED — backend is live."
+
+      - name: Check frontend
+        run: |
+          STATUS=$(curl --silent --output /dev/null --write-out "%{http_code}" \
+            https://javacup.dev)
+          echo "Frontend check status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "Frontend check FAILED — site may not be responding."
+            exit 1
+          fi
+          echo "Frontend check PASSED — javacup.dev is live."
