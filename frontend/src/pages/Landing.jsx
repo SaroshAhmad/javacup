@@ -152,7 +152,7 @@ export default function Landing() {
           Which one are you? <span className="text-text-muted">(tap to see your path)</span>
         </p>
         <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-          {WHO.map(([label, tone, msg]) => {
+          {WHO.map(([label, tone]) => {
             const active = whoSelected === label;
             return (
               <button
