@@ -9,12 +9,16 @@ import Button from '../ui/Button';
  * logged-in state (profile menu / avatar) is marked below so it slots in cleanly.
  *
  * Desktop: logo · nav links · auth CTAs. Mobile: logo · hamburger → dropdown panel.
+ *
+ * One link (Contribute) carries a small pulsing green "exciting" label to draw
+ * attention to contributor recruitment. Positioned above-right on desktop, inline on
+ * the mobile menu so it never overlaps stacked rows.
  */
 const NAV_LINKS = [
   { to: '/', label: 'Home', end: true },
   { to: '/roadmap', label: 'Roadmap' },
   { to: '/about', label: 'About' },
-  { to: '/contribute', label: 'Contribute' },
+  { to: '/contribute', label: 'Contribute', badge: 'exciting' },
 ];
 
 function navLinkClass({ isActive }) {
@@ -57,9 +61,19 @@ export default function Navbar() {
         {/* Desktop nav */}
         <div className="hidden items-center gap-6 md:flex">
           {NAV_LINKS.map((l) => (
-            <NavLink key={l.to} to={l.to} end={l.end} className={navLinkClass}>
-              {l.label}
-            </NavLink>
+            <span key={l.to} className="relative">
+              <NavLink to={l.to} end={l.end} className={navLinkClass}>
+                {l.label}
+              </NavLink>
+              {l.badge ? (
+                <span
+                  className="pointer-events-none absolute -top-2.5 -right-7 animate-badge-pulse font-mono text-[9px] font-medium tracking-wide text-success-bright"
+                  aria-hidden="true"
+                >
+                  {l.badge}
+                </span>
+              ) : null}
+            </span>
           ))}
         </div>
 
@@ -96,11 +110,16 @@ export default function Navbar() {
                 end={l.end}
                 onClick={() => setOpen(false)}
                 className={({ isActive }) =>
-                  'rounded-md px-3 py-2 text-body-md transition-colors duration-150 ' +
+                  'flex items-center gap-2 rounded-md px-3 py-2 text-body-md transition-colors duration-150 ' +
                   (isActive ? 'bg-raised text-amber-400' : 'text-text-secondary hover:bg-raised hover:text-text-primary')
                 }
               >
                 {l.label}
+                {l.badge ? (
+                  <span className="animate-badge-pulse font-mono text-[10px] font-medium tracking-wide text-success-bright">
+                    {l.badge}
+                  </span>
+                ) : null}
               </NavLink>
             ))}
             <div className="mt-2 flex flex-col gap-2 border-t border-border-subtle pt-3">

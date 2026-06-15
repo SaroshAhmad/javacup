@@ -167,6 +167,22 @@
   --container-form: 480px;
   --container-modal: 560px;
   --container-hero: 800px;
+
+  --animate-badge-pulse: badge-pulse 1.8s ease-in-out infinite;
+
+  @keyframes badge-pulse {
+
+    0%,
+    100% {
+      opacity: 1;
+      text-shadow: 0 0 8px rgba(52, 211, 153, 0.9);
+    }
+
+    50% {
+      opacity: 0.55;
+      text-shadow: 0 0 3px rgba(52, 211, 153, 0.4);
+    }
+  }
 }
 
 /* -----------------------------------------------------------------

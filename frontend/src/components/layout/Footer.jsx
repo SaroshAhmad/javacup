@@ -15,7 +15,7 @@ const COLUMNS = [
   {
     heading: 'Community',
     links: [
-      { label: 'Contribute', to: '/contribute' },
+      { label: 'Contribute', to: '/contribute', badge: 'exciting' },
       { label: 'Guidelines', to: '/guidelines' },
     ],
   },
@@ -47,12 +47,22 @@ export default function Footer() {
                 <ul className="mt-3 flex flex-col gap-2">
                   {col.links.map((l) => (
                     <li key={l.label}>
-                      <Link
-                        to={l.to}
-                        className="text-body-md text-text-secondary transition-colors duration-150 hover:text-text-primary"
-                      >
-                        {l.label}
-                      </Link>
+                      <span className="relative inline-block">
+                        <Link
+                          to={l.to}
+                          className="text-body-md text-text-secondary transition-colors duration-150 hover:text-text-primary"
+                        >
+                          {l.label}
+                        </Link>
+                        {l.badge ? (
+                          <span
+                            className="pointer-events-none absolute -top-2.5 -right-7 animate-badge-pulse font-mono text-[9px] font-medium tracking-wide text-success-bright"
+                            aria-hidden="true"
+                          >
+                            {l.badge}
+                          </span>
+                        ) : null}
+                      </span>
                     </li>
                   ))}
                 </ul>
