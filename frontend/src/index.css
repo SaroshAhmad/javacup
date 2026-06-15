@@ -1,111 +1,279 @@
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+/**
+ * JavaCup — global styles + theme (Brand Identity v2.0)
+ * Tailwind v4 (CSS-first). This single file replaces the old tailwind.config.js.
+ *
+ * Token rules (from the Brand Identity doc):
+ *  - Amber is the single brand accent. amber-400 = calm (text/icons/tags/highlight word),
+ *    amber-500 = bright (PRIMARY BUTTON FILL ONLY).
+ *  - Surfaces are warm-dark (dark-first) and warm-light (light-equal). In components,
+ *    reference SEMANTIC tokens (bg-base, text-primary, border-subtle...) which flip per mode.
+ *  - Depth = layered surfaces + 1px hairline borders. Shadow only for floating layers (never amber).
+ *  - Green is a positive/vote signal only.
+ *
+ * Dark mode is class-based: add class="dark" to <html> (dark is the primary mode).
+ */
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+/* Brand fonts — Plus Jakarta Sans (500,600), Inter (400,500), JetBrains Mono (400,500) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@500;600&display=swap');
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@import "tailwindcss";
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
+/* Make dark mode respond to a `.dark` class on a parent (default v4 is media-query based). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* ---------------------------------------------------------------
+   * PALETTE TOKENS (mode-independent)
+   * Generate utilities automatically: --color-amber-400 → bg-amber-400, text-amber-400, etc.
+   * ------------------------------------------------------------- */
+
+  /* Amber — the single brand accent */
+  --color-amber-400: #E0A93C;
+  /* calm: headline highlight, icons, links, tags, highlights */
+  --color-amber-500: #F0A52E;
+  /* bright: PRIMARY BUTTON FILL ONLY */
+  --color-amber-700: #B45309;
+  /* primary button hover; text on light amber */
+  --color-amber-900: #78350F;
+  /* text ON the bright amber button */
+  --color-amber-950: #2A1C06;
+  /* deepest amber-tinted text; warm shadow tint */
+  --color-amber-surface: #1E1809;
+  /* tinted icon-chip / tag background on dark */
+
+  /* Green — positive / vote signal only */
+  --color-success: #10B981;
+  /* upvote active, completed stage, approved resource */
+  --color-success-bright: #34D399;
+  /* vote arrow / icon on dark */
+  --color-success-surface: #0E2620;
+  /* tinted success chip on dark */
+
+  /* Identity-tag accents (the trust layer): text colour + tinted background */
+  --color-tag-switcher: #E0A93C;
+  /* career_switcher */
+  --color-tag-switcher-bg: #1E1809;
+  --color-tag-grad: #34D399;
+  /* cs_graduate */
+  --color-tag-grad-bg: #0E2620;
+  --color-tag-self: #A78BFA;
+  /* self_taught */
+  --color-tag-self-bg: #1E1633;
+  --color-tag-student: #7C93F0;
+  /* student */
+  --color-tag-student-bg: #11162E;
+  --color-tag-pro: #B0ABA0;
+  /* professional */
+  --color-tag-pro-bg: #1C1A15;
+
+  /* Raw warm-dark surface values (mode-independent reference; semantics below flip per mode) */
+  --color-dark-base: #0C0B09;
+  --color-dark-surface: #13110D;
+  --color-dark-raised: #16140F;
+  --color-dark-border-subtle: #211E18;
+  --color-dark-border-strong: #2E2A20;
+
+  /* Raw warm-light surface values */
+  --color-light-base: #FBF9F4;
+  --color-light-surface: #FFFFFF;
+  --color-light-raised: #F5EEE0;
+  --color-light-border-subtle: #E7DFCF;
+
+  /* ---------------------------------------------------------------
+   * SEMANTIC TOKENS — reference THESE in components (bg-base, text-primary…).
+   * They point at CSS variables redefined per mode in :root / .dark below.
+   * ------------------------------------------------------------- */
+  --color-base: var(--bg-base);
+  --color-surface: var(--bg-surface);
+  --color-raised: var(--bg-raised);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+
+  /* ---------------------------------------------------------------
+   * TYPOGRAPHY
+   * ------------------------------------------------------------- */
+  --font-display: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Type scale (text-display, text-heading-1, … text-code) */
+  --text-display: 2.75rem;
+  /* 44px hero headline */
+  --text-display--line-height: 1.1;
+  --text-display--letter-spacing: -0.025em;
+  --text-display--font-weight: 600;
+
+  --text-heading-1: 2.125rem;
+  /* 34px */
+  --text-heading-1--line-height: 1.15;
+  --text-heading-1--letter-spacing: -0.02em;
+  --text-heading-1--font-weight: 600;
+
+  --text-heading-2: 1.625rem;
+  /* 26px */
+  --text-heading-2--line-height: 1.2;
+  --text-heading-2--letter-spacing: -0.015em;
+  --text-heading-2--font-weight: 600;
+
+  --text-heading-3: 1.25rem;
+  /* 20px */
+  --text-heading-3--line-height: 1.3;
+  --text-heading-3--letter-spacing: -0.01em;
+  --text-heading-3--font-weight: 500;
+
+  --text-body-lg: 1rem;
+  /* 16px */
+  --text-body-lg--line-height: 1.6;
+  --text-body-md: 0.875rem;
+  /* 14px */
+  --text-body-md--line-height: 1.55;
+  --text-body-sm: 0.75rem;
+  /* 12px */
+  --text-body-sm--line-height: 1.5;
+
+  --text-mono-label: 0.6875rem;
+  /* 11px // labels, pills, stat numbers */
+  --text-mono-label--line-height: 1.4;
+  --text-mono-label--letter-spacing: 0.04em;
+  --text-mono-label--font-weight: 500;
+
+  --text-code: 0.875rem;
+  /* 14px JetBrains Mono */
+  --text-code--line-height: 1.6;
+
+  /* ---------------------------------------------------------------
+   * RADIUS — rounded-sm … rounded-xl
+   * ------------------------------------------------------------- */
+  --radius-sm: 0.375rem;
+  /* 6px  tags, code tokens */
+  --radius-md: 0.5rem;
+  /* 8px  buttons, inputs, icon chips */
+  --radius-lg: 0.75rem;
+  /* 12px cards, panels, dropdowns */
+  --radius-xl: 0.875rem;
+  /* 14px hero container, large feature blocks */
+
+  /* ---------------------------------------------------------------
+   * SHADOW — borders-first depth. Shadow only for floating layers, never coloured.
+   * ------------------------------------------------------------- */
+  --shadow-float: 0 10px 30px -10px rgba(0, 0, 0, 0.6);
+
+  /* Content widths (max-w-container, max-w-prose, …) */
+  --container-container: 1280px;
+  --container-prose: 720px;
+  --container-form: 480px;
+  --container-modal: 560px;
+  --container-hero: 800px;
+
+  --animate-badge-pulse: badge-pulse 1.8s ease-in-out infinite;
+
+  @keyframes badge-pulse {
+
+    0%,
+    100% {
+      opacity: 1;
+      text-shadow: 0 0 8px rgba(52, 211, 153, 0.9);
+    }
+
+    50% {
+      opacity: 0.55;
+      text-shadow: 0 0 3px rgba(52, 211, 153, 0.4);
+    }
   }
 }
 
-@media (prefers-color-scheme: dark) {
+/* -----------------------------------------------------------------
+ * SEMANTIC TOKEN VALUES PER MODE
+ * ----------------------------------------------------------------- */
+@layer base {
+
+  /* Light mode (warm cream) — equal, fully designed */
   :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+    --bg-base: #FBF9F4;
+    --bg-surface: #FFFFFF;
+    --bg-raised: #F5EEE0;
+    --text-primary: #1A1814;
+    --text-secondary: #6E6A60;
+    --text-muted: #8E8A80;
+    --border-subtle: #E7DFCF;
+    --border-strong: #D6CDBB;
   }
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
+  /* Dark mode (warm near-black) — primary */
+  .dark {
+    --bg-base: #0C0B09;
+    --bg-surface: #13110D;
+    --bg-raised: #16140F;
+    --text-primary: #FAFAF8;
+    --text-secondary: #8E8A80;
+    --text-muted: #6E6A60;
+    --border-subtle: #211E18;
+    --border-strong: #2E2A20;
+  }
+
+  html {
+    font-family: var(--font-sans);
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+  }
+
+  /* Focus ring — always visible, amber-400, 2px / 2px offset (UX principle) */
+  :focus-visible {
+    outline: 2px solid var(--color-amber-400);
+    outline-offset: 2px;
   }
 }
 
-body {
-  margin: 0;
+/* -----------------------------------------------------------------
+ * UTILITIES — texture + glow ("felt, not seen")
+ * ----------------------------------------------------------------- */
+@utility bg-dot-grid {
+  background-image: radial-gradient(rgba(250, 250, 240, 0.07) 1px, transparent 1px);
+  background-size: 20px 20px;
 }
 
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
+/* Texture G fade-out: dots visible at top, gone by ~60% down, so text sits on clean surface. */
+@utility mask-fade-b {
+  -webkit-mask-image: linear-gradient(180deg, #000, transparent 60%);
+  mask-image: linear-gradient(180deg, #000, transparent 60%);
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+/* Very faint wide amber wash from top-centre. */
+@utility glow-top {
+  background-image: radial-gradient(140% 100% at 50% 0%, rgba(245, 158, 11, 0.06), transparent 60%);
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
+/* Even fainter wash in one lower corner. */
+@utility glow-corner {
+  background-image: radial-gradient(120% 90% at 80% 110%, rgba(245, 158, 11, 0.035), transparent 55%);
+}
+
+/* 1px amber→transparent accent line for the very top edge of the hero. */
+@utility accent-line {
+  background-image: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.45), transparent);
+}
+
+/* Motion is invisible by default and fully disabled under reduced-motion. No exceptions. */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0ms !important;
+    scroll-behavior: auto !important;
   }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
-}
-
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
 }
