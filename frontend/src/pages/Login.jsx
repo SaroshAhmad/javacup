@@ -61,7 +61,9 @@ export default function Login() {
       setErrors({ form: error.message });
       return;
     }
-    navigate('/');
+    // Post-login destination — the roadmap is the core "what's next" surface for a
+    // returning learner (ADR 0007). Becomes the logged-in home in Phase 2.
+    navigate('/roadmap');
   }
 
   async function handleGoogle() {
