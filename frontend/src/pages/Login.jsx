@@ -1,15 +1,16 @@
 import { useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import Button from '../components/ui/Button';
 import { Field, Input } from '../components/ui/Field';
 import AuthShell from '../components/auth/AuthShell';
+import { supabase } from '../lib/supabase';
 
 /**
  * Login (/login) — email + password sign-in, plus Google OAuth.
  *
- * Phase A (this sprint): UI + client-side validation only. The actual auth calls are
- * seams marked "WIRE:" below — they get connected to Supabase in Phase B. Nothing here
- * authenticates yet; submitting a valid form just shows the pending state.
+ * Wired to Supabase (Phase B). On success we navigate home; the AuthProvider is
+ * subscribed to auth changes, so the navbar and the rest of the app update to the
+ * logged-in state automatically — no manual state passing needed here.
  */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -22,6 +23,7 @@ function validate(data) {
 }
 
 export default function Login() {
+  const navigate = useNavigate();
   const [errors, setErrors] = useState({});
   const [pending, setPending] = useState(false);
 
@@ -44,14 +46,30 @@ export default function Login() {
       form.querySelector(`[name="${Object.keys(found)[0]}"]`)?.focus();
       return;
     }
+
     setPending(true);
-    // WIRE (Phase B): await supabase.auth.signInWithPassword({ email, password })
-    //   on success → redirect to intended page / profile
-    //   on error   → setErrors({ form: message }), setPending(false)
+    setErrors({});
+    const { error } = await supabase.auth.signInWithPassword({
+      email: data.email.trim(),
+      password: data.password,
+    });
+    setPending(false);
+
+    if (error) {
+      // Supabase returns "Invalid login credentials" for both wrong-password and
+      // unconfirmed-email — keep the message generic, don't leak which.
+      setErrors({ form: error.message });
+      return;
+    }
+    navigate('/');
   }
 
-  function handleGoogle() {
-    // WIRE (Phase B): supabase.auth.signInWithOAuth({ provider: 'google' })
+  async function handleGoogle() {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/` },
+    });
+    if (error) setErrors({ form: error.message });
   }
 
   return (
