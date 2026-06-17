@@ -3,14 +3,19 @@ import { Link } from 'react-router';
 import Button from '../components/ui/Button';
 import { Field, Input } from '../components/ui/Field';
 import AuthShell from '../components/auth/AuthShell';
+import { supabase } from '../lib/supabase';
 
 /**
  * Signup (/signup) — create an account with email + password, or Google OAuth.
  *
- * Phase A (this sprint): UI + client-side validation only. Auth calls are seams marked
- * "WIRE:" — connected to Supabase in Phase B. Background-tag selection happens AFTER
- * signup in the onboarding flow (Phase D), not on this form — kept deliberately minimal
- * so the signup step itself is frictionless.
+ * Wired to Supabase (Phase B). On submit we call supabase.auth.signUp; with email
+ * confirmation ON (the Supabase default and what the architecture doc specifies), the
+ * user must click a link in their inbox before they can log in — so success shows a
+ * "check your email" state rather than logging them straight in.
+ *
+ * Background-tag selection happens AFTER confirmation, in onboarding (Phase D) — kept
+ * off this form so signup stays frictionless. The name is stored in user metadata now
+ * and mirrored into the profiles row later.
  */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD = 8;
@@ -28,6 +33,7 @@ function validate(data) {
 export default function Signup() {
   const [errors, setErrors] = useState({});
   const [pending, setPending] = useState(false);
+  const [sentTo, setSentTo] = useState(null);
 
   function clearError(name) {
     setErrors((prev) => {
@@ -48,14 +54,56 @@ export default function Signup() {
       form.querySelector(`[name="${Object.keys(found)[0]}"]`)?.focus();
       return;
     }
+
     setPending(true);
-    // WIRE (Phase B): await supabase.auth.signUp({ email, password, options: { data: { name } } })
-    //   on success → route into onboarding (choose background tag) [Phase D]
-    //   on error   → setErrors({ form: message }), setPending(false)
+    setErrors({});
+    const email = data.email.trim();
+    const { error } = await supabase.auth.signUp({
+      email,
+      password: data.password,
+      options: { data: { name: data.name.trim() } },
+    });
+    setPending(false);
+
+    if (error) {
+      setErrors({ form: error.message });
+      return;
+    }
+    setSentTo(email);
   }
 
-  function handleGoogle() {
-    // WIRE (Phase B): supabase.auth.signInWithOAuth({ provider: 'google' })
+  async function handleGoogle() {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/` },
+    });
+    if (error) setErrors({ form: error.message });
+  }
+
+  // Success state — account created, confirmation email sent.
+  if (sentTo) {
+    return (
+      <AuthShell
+        eyebrow="// almost there"
+        title="Check your email"
+        subtitle={`We sent a confirmation link to ${sentTo}. Click it to activate your account, then log in.`}
+        footer={
+          <>
+            Wrong address?{' '}
+            <button type="button" onClick={() => setSentTo(null)} className="text-amber-400 transition-colors hover:text-amber-300">
+              Try again
+            </button>
+          </>
+        }
+      >
+        <p className="text-center text-body-sm text-text-secondary">
+          Didn’t get it? Check your spam folder — it can take a minute to arrive.
+        </p>
+        <Button as={Link} to="/login" variant="secondary" className="mt-4 w-full">
+          Go to log in
+        </Button>
+      </AuthShell>
+    );
   }
 
   return (
