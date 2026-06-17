@@ -1,11 +1,13 @@
 import { Outlet } from 'react-router';
 import Navbar from './Navbar';
 import Footer from './Footer';
+import ContributeModal from '../contribute/ContributeModal';
 
 /**
  * RootLayout — the persistent app shell.
  * Navbar and Footer stay mounted across route changes; the matched page renders
- * into <Outlet />. A faint page-level glow sits behind everything.
+ * into <Outlet />. The ContributeModal lives here so it can overlay any page and be
+ * triggered from the navbar or footer.
  */
 export default function RootLayout() {
   return (
@@ -16,6 +18,7 @@ export default function RootLayout() {
         <Outlet />
       </main>
       <Footer />
+      <ContributeModal />
     </div>
   );
 }
