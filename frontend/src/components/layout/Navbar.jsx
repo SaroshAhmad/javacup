@@ -2,16 +2,19 @@ import { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router';
 import Button from '../ui/Button';
 import { useContributeModal } from '../../context/useContributeModal';
+import { useAuth } from '../../context/useAuth';
+import ProfileMenu from './ProfileMenu';
 
 /**
  * Navbar — the persistent top navigation (Brand Identity v2.0, §7.4).
  *
- * Logged-out state (the only state until auth ships in Sprint 2). The seam for the
- * logged-in state (profile menu / avatar) is marked below so it slots in cleanly.
+ * Auth-aware: logged-out shows "Log in / Join for free"; logged-in shows a ProfileMenu
+ * (avatar + dropdown with logout). State comes from useAuth(); while the initial session
+ * check is loading, the auth slot is left empty to avoid flashing the wrong control.
  *
- * "Contribute" is special: instead of navigating, it opens the conversion modal
- * (ContributeModal). It carries a pulsing green "exciting" badge. When auth lands,
- * the modal's trigger gains a logged-in check (logged-in users go to the workflow).
+ * "Contribute" opens the conversion modal (ContributeModal) and carries the pulsing green
+ * "exciting" badge. (Phase B+: the modal trigger will skip straight to the workflow for
+ * logged-in users.)
  */
 const NAV_LINKS = [
   { to: '/', label: 'Home', end: true },
@@ -49,6 +52,7 @@ function Badge({ label, className }) {
 export default function Navbar() {
   const navigate = useNavigate();
   const { open: openContribute } = useContributeModal();
+  const { isAuthenticated, loading, signOut } = useAuth();
   const [open, setOpen] = useState(false);
 
   function go(path) {
@@ -58,6 +62,11 @@ export default function Navbar() {
   function triggerContribute() {
     setOpen(false);
     openContribute();
+  }
+  async function handleMobileLogout() {
+    setOpen(false);
+    await signOut();
+    navigate('/');
   }
 
   return (
@@ -88,14 +97,20 @@ export default function Navbar() {
           ))}
         </div>
 
-        {/* Desktop auth — logged-out state. (Logged-in profile menu slots in here.) */}
+        {/* Desktop auth slot — login buttons or profile menu */}
         <div className="hidden items-center gap-2 md:flex">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/login')}>
-            Log in
-          </Button>
-          <Button variant="primary" size="sm" onClick={() => navigate('/signup')}>
-            Join for free
-          </Button>
+          {loading ? null : isAuthenticated ? (
+            <ProfileMenu />
+          ) : (
+            <>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/login')}>
+                Log in
+              </Button>
+              <Button variant="primary" size="sm" onClick={() => navigate('/signup')}>
+                Join for free
+              </Button>
+            </>
+          )}
         </div>
 
         {/* Mobile toggle */}
@@ -141,12 +156,20 @@ export default function Navbar() {
               ),
             )}
             <div className="mt-2 flex flex-col gap-2 border-t border-border-subtle pt-3">
-              <Button variant="ghost" size="sm" className="w-full" onClick={() => go('/login')}>
-                Log in
-              </Button>
-              <Button variant="primary" size="sm" className="w-full" onClick={() => go('/signup')}>
-                Join for free
-              </Button>
+              {loading ? null : isAuthenticated ? (
+                <Button variant="secondary" size="sm" className="w-full" onClick={handleMobileLogout}>
+                  Log out
+                </Button>
+              ) : (
+                <>
+                  <Button variant="ghost" size="sm" className="w-full" onClick={() => go('/login')}>
+                    Log in
+                  </Button>
+                  <Button variant="primary" size="sm" className="w-full" onClick={() => go('/signup')}>
+                    Join for free
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>
