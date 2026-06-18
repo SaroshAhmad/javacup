@@ -1,5 +1,6 @@
 import { Routes, Route } from 'react-router';
 import RootLayout from './components/layout/RootLayout';
+import RequireOnboarding from './components/auth/RequireOnboarding';
 import Landing from './pages/Landing';
 import Roadmap from './pages/Roadmap';
 import About from './pages/About';
@@ -7,25 +8,35 @@ import Contribute from './pages/Contribute';
 import Guidelines from './pages/Guidelines';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
+import Onboarding from './pages/Onboarding';
 import NotFound from './pages/NotFound';
 
 /**
  * Route map (declarative mode).
  *
- * Two groups:
- *   1. Main app routes — wrapped in RootLayout (Navbar + Footer + glow).
- *   2. Auth routes (/login, /signup) — standalone, OUTSIDE RootLayout, so they render
- *      as clean focus screens with no nav chrome (AuthShell provides their frame).
+ * Groups:
+ *   1. Standalone focus screens — OUTSIDE RootLayout, no nav chrome: /login, /signup,
+ *      /onboarding.
+ *   2. Main app routes — wrapped in RootLayout (Navbar + Footer + glow), and guarded by
+ *      RequireOnboarding so a logged-in user who hasn't finished onboarding is redirected
+ *      to /onboarding before they can use the app.
  */
 export default function App() {
   return (
     <Routes>
-      {/* Auth — no navbar/footer, clean focus screens */}
+      {/* Focus screens — no navbar/footer */}
       <Route path="login" element={<Login />} />
       <Route path="signup" element={<Signup />} />
+      <Route path="onboarding" element={<Onboarding />} />
 
-      {/* Everything else — full app shell */}
-      <Route element={<RootLayout />}>
+      {/* Everything else — full app shell, behind the onboarding gate */}
+      <Route
+        element={
+          <RequireOnboarding>
+            <RootLayout />
+          </RequireOnboarding>
+        }
+      >
         <Route index element={<Landing />} />
         <Route path="roadmap" element={<Roadmap />} />
         <Route path="about" element={<About />} />
