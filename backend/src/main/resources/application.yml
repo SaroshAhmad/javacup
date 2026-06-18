@@ -22,9 +22,13 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
-javacup:
-  supabase:
-    jwt-secret: ${SUPABASE_JWT_SECRET}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://navxgedohzktavakppta.supabase.co/auth/v1
+          jwk-set-uri: https://navxgedohzktavakppta.supabase.co/auth/v1/.well-known/jwks.json
+          jws-algorithms: ES256
 
 server:
   port: ${PORT:8080}
