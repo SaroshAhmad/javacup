@@ -3,49 +3,66 @@ package dev.javacup.backend.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
- * Base security configuration.
+ * Security configuration — Supabase JWT (ES256) validation via OAuth2 resource server.
  *
- * For now this permits the health check and all public read endpoints, and
- * leaves the application stateless (no server-side sessions). This is the
- * foundation that the Supabase JWT validation filter will plug into in a later
- * sprint — see docs/authentication.md and ADR 0001.
+ * Tokens are asymmetric (ES256), so Spring validates each bearer token's signature
+ * against Supabase's published JWKS (public keys), plus issuer and expiry. No shared
+ * secret. JWKS/issuer URIs + the ES256 algorithm are in application.yml under
+ * spring.security.oauth2.resourceserver.jwt.
  *
- * Until that filter is added, no endpoint requires authentication. That is
- * intentional for this stage: there are no protected resources yet. Write
- * endpoints will be locked down when the JWT filter lands.
+ * Access model (matches the API spec):
+ *   - Public:  the health check, and GET on the genuinely public read endpoints
+ *              (roadmap, resources, discussions, recommendations). No token required.
+ *   - Member:  everything else — including GET /users/me and POST /auth/sync — requires
+ *              a valid Supabase JWT.
+ *   - Admin:   tightened per-endpoint later via method security against the profile's
+ *              is_admin flag (role lives in our DB, not the JWT).
+ *
+ * CORS: the cross-origin source is defined in CorsConfig and wired in below, so the
+ * React app (different origin) can call the API with its bearer token.
+ *
+ * Stateless: no server-side sessions; the React client sends the bearer token.
  */
 @Configuration
 public class SecurityConfig {
 
+    /** GET paths that are genuinely public (guest-readable). */
+    private static final String[] PUBLIC_GET = {
+            "/api/v1/roadmap/**",
+            "/api/v1/resources/**",
+            "/api/v1/discussions/**",
+            "/api/v1/recommendations/**"
+    };
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                // No browser session — this is a stateless API consumed by the
-                // React client with bearer tokens.
+                // Apply the CORS source from CorsConfig.
+                .cors(Customizer.withDefaults())
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                // CSRF protection is for session-cookie apps; a stateless token
-                // API does not use it.
                 .csrf(AbstractHttpConfigurer::disable)
-                // Disable the default login form and HTTP basic prompt so the
-                // generated password path is gone.
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        // Health check must be reachable by Render.
+                        // CORS preflight requests must not require auth.
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // Health check — reachable by Render.
                         .requestMatchers("/api/v1/health").permitAll()
-                        // Public read endpoints (roadmap, discussions, etc.) are
-                        // open. Tighten per-endpoint when the JWT filter is added.
-                        .requestMatchers(HttpMethod.GET, "/api/v1/**").permitAll()
-                        // Everything else is open for now; locked down later.
-                        .anyRequest().permitAll()
-                );
+                        // Genuinely public guest-readable GET endpoints.
+                        .requestMatchers(HttpMethod.GET, PUBLIC_GET).permitAll()
+                        // Everything else — writes, /auth/sync, /users/me — needs a valid JWT.
+                        .anyRequest().authenticated()
+                )
+                // Validate incoming bearer tokens as JWTs against the configured JWKS.
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> {}));
         return http.build();
     }
 }

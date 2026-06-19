@@ -1,24 +1,26 @@
 import { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router';
 import Button from '../ui/Button';
+import { useContributeModal } from '../../context/useContributeModal';
+import { useAuth } from '../../context/useAuth';
+import ProfileMenu from './ProfileMenu';
 
 /**
  * Navbar — the persistent top navigation (Brand Identity v2.0, §7.4).
  *
- * Logged-out state (the only state until auth ships in Sprint 2). The seam for the
- * logged-in state (profile menu / avatar) is marked below so it slots in cleanly.
+ * Auth-aware: logged-out shows "Log in / Join for free"; logged-in shows a ProfileMenu
+ * (avatar + dropdown with logout). State comes from useAuth(); while the initial session
+ * check is loading, the auth slot is left empty to avoid flashing the wrong control.
  *
- * Desktop: logo · nav links · auth CTAs. Mobile: logo · hamburger → dropdown panel.
- *
- * One link (Contribute) carries a small pulsing green "exciting" label to draw
- * attention to contributor recruitment. Positioned above-right on desktop, inline on
- * the mobile menu so it never overlaps stacked rows.
+ * "Contribute" opens the conversion modal (ContributeModal) and carries the pulsing green
+ * "exciting" badge. (Phase B+: the modal trigger will skip straight to the workflow for
+ * logged-in users.)
  */
 const NAV_LINKS = [
   { to: '/', label: 'Home', end: true },
   { to: '/roadmap', label: 'Roadmap' },
   { to: '/about', label: 'About' },
-  { to: '/contribute', label: 'Contribute', badge: 'exciting' },
+  { label: 'Contribute', badge: 'exciting', modal: true },
 ];
 
 function navLinkClass({ isActive }) {
@@ -39,13 +41,32 @@ const IconClose = (
   </svg>
 );
 
+function Badge({ label, className }) {
+  return (
+    <span className={`animate-badge-pulse font-mono font-medium tracking-wide text-success-bright ${className}`} aria-hidden="true">
+      {label}
+    </span>
+  );
+}
+
 export default function Navbar() {
   const navigate = useNavigate();
+  const { open: openContribute } = useContributeModal();
+  const { isAuthenticated, loading, signOut } = useAuth();
   const [open, setOpen] = useState(false);
 
   function go(path) {
     setOpen(false);
     navigate(path);
+  }
+  function triggerContribute() {
+    setOpen(false);
+    openContribute();
+  }
+  async function handleMobileLogout() {
+    setOpen(false);
+    await signOut();
+    navigate('/');
   }
 
   return (
@@ -61,30 +82,35 @@ export default function Navbar() {
         {/* Desktop nav */}
         <div className="hidden items-center gap-6 md:flex">
           {NAV_LINKS.map((l) => (
-            <span key={l.to} className="relative">
-              <NavLink to={l.to} end={l.end} className={navLinkClass}>
-                {l.label}
-              </NavLink>
-              {l.badge ? (
-                <span
-                  className="pointer-events-none absolute -top-2.5 -right-7 animate-badge-pulse font-mono text-[9px] font-medium tracking-wide text-success-bright"
-                  aria-hidden="true"
-                >
-                  {l.badge}
-                </span>
-              ) : null}
+            <span key={l.label} className="relative">
+              {l.modal ? (
+                <button type="button" onClick={triggerContribute} className={navLinkClass({ isActive: false })}>
+                  {l.label}
+                </button>
+              ) : (
+                <NavLink to={l.to} end={l.end} className={navLinkClass}>
+                  {l.label}
+                </NavLink>
+              )}
+              {l.badge ? <Badge label={l.badge} className="pointer-events-none absolute -top-2.5 -right-7 text-[9px]" /> : null}
             </span>
           ))}
         </div>
 
-        {/* Desktop auth — logged-out state. (Logged-in profile menu slots in here.) */}
+        {/* Desktop auth slot — login buttons or profile menu */}
         <div className="hidden items-center gap-2 md:flex">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/login')}>
-            Log in
-          </Button>
-          <Button variant="primary" size="sm" onClick={() => navigate('/login')}>
-            Join for free
-          </Button>
+          {loading ? null : isAuthenticated ? (
+            <ProfileMenu />
+          ) : (
+            <>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/login')}>
+                Log in
+              </Button>
+              <Button variant="primary" size="sm" onClick={() => navigate('/signup')}>
+                Join for free
+              </Button>
+            </>
+          )}
         </div>
 
         {/* Mobile toggle */}
@@ -103,32 +129,47 @@ export default function Navbar() {
       {open ? (
         <div className="border-t border-border-subtle bg-base md:hidden">
           <div className="mx-auto flex max-w-container flex-col gap-1 px-4 py-3">
-            {NAV_LINKS.map((l) => (
-              <NavLink
-                key={l.to}
-                to={l.to}
-                end={l.end}
-                onClick={() => setOpen(false)}
-                className={({ isActive }) =>
-                  'flex items-center gap-2 rounded-md px-3 py-2 text-body-md transition-colors duration-150 ' +
-                  (isActive ? 'bg-raised text-amber-400' : 'text-text-secondary hover:bg-raised hover:text-text-primary')
-                }
-              >
-                {l.label}
-                {l.badge ? (
-                  <span className="animate-badge-pulse font-mono text-[10px] font-medium tracking-wide text-success-bright">
-                    {l.badge}
-                  </span>
-                ) : null}
-              </NavLink>
-            ))}
+            {NAV_LINKS.map((l) =>
+              l.modal ? (
+                <button
+                  key={l.label}
+                  type="button"
+                  onClick={triggerContribute}
+                  className="flex items-center gap-2 rounded-md px-3 py-2 text-left text-body-md text-text-secondary transition-colors duration-150 hover:bg-raised hover:text-text-primary"
+                >
+                  {l.label}
+                  {l.badge ? <Badge label={l.badge} className="text-[10px]" /> : null}
+                </button>
+              ) : (
+                <NavLink
+                  key={l.label}
+                  to={l.to}
+                  end={l.end}
+                  onClick={() => setOpen(false)}
+                  className={({ isActive }) =>
+                    'flex items-center gap-2 rounded-md px-3 py-2 text-body-md transition-colors duration-150 ' +
+                    (isActive ? 'bg-raised text-amber-400' : 'text-text-secondary hover:bg-raised hover:text-text-primary')
+                  }
+                >
+                  {l.label}
+                </NavLink>
+              ),
+            )}
             <div className="mt-2 flex flex-col gap-2 border-t border-border-subtle pt-3">
-              <Button variant="ghost" size="sm" className="w-full" onClick={() => go('/login')}>
-                Log in
-              </Button>
-              <Button variant="primary" size="sm" className="w-full" onClick={() => go('/login')}>
-                Join for free
-              </Button>
+              {loading ? null : isAuthenticated ? (
+                <Button variant="secondary" size="sm" className="w-full" onClick={handleMobileLogout}>
+                  Log out
+                </Button>
+              ) : (
+                <>
+                  <Button variant="ghost" size="sm" className="w-full" onClick={() => go('/login')}>
+                    Log in
+                  </Button>
+                  <Button variant="primary" size="sm" className="w-full" onClick={() => go('/signup')}>
+                    Join for free
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>

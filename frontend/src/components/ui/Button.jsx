@@ -11,6 +11,11 @@ import { cn } from '../../lib/cn';
  *  - ghost     transparent. Tertiary / nav actions.
  *
  * Sizes: sm | md (default) | lg.
+ *
+ * Polymorphic: pass `as` to render a different element while keeping button styling —
+ * e.g. `as={Link} to="/signup"` for a navigation action, or `as="a" href="…"`. Defaults
+ * to a real <button>. The `type` attribute is only applied when rendering a <button>.
+ *
  * Focus ring is provided globally by :focus-visible (amber-400) — never removed here.
  */
 const base =
@@ -37,18 +42,19 @@ const sizes = {
 };
 
 const Button = forwardRef(function Button(
-  { variant = 'primary', size = 'md', type = 'button', className, children, ...props },
+  { as: Component = 'button', variant = 'primary', size = 'md', type = 'button', className, children, ...props },
   ref,
 ) {
+  const isNativeButton = Component === 'button';
   return (
-    <button
+    <Component
       ref={ref}
-      type={type}
+      type={isNativeButton ? type : undefined}
       className={cn(base, variants[variant], sizes[size], className)}
       {...props}
     >
       {children}
-    </button>
+    </Component>
   );
 });
 
