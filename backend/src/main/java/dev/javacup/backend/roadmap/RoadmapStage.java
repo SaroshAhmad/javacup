@@ -2,6 +2,8 @@ package dev.javacup.backend.roadmap;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
@@ -10,12 +12,13 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * A roadmap stage (e.g. Foundations, Core Java). Maps the roadmap_stages table exactly:
- * id (SERIAL), title, description (NOT NULL), order_index (UNIQUE), created_at.
+ * A roadmap stage (e.g. Foundations, Core Java). Maps roadmap_stages exactly: id (SERIAL),
+ * title, description (NOT NULL), order_index (UNIQUE), created_at.
  *
- * There is no slug or updated_at column — stages are addressed by their unique
- * order_index in the API. Topics are loaded separately by the service (not a JPA
- * relationship) to keep fetching explicit.
+ * id is a Postgres SERIAL, mapped with GenerationType.IDENTITY so the DB assigns it.
+ * Stages are read-only content in the app today, but the mapping is correct for any future
+ * stage creation. There is no slug or updated_at column — stages are addressed by their
+ * unique order_index in the API.
  */
 @Entity
 @Table(name = "roadmap_stages")
@@ -25,6 +28,7 @@ import lombok.Setter;
 public class RoadmapStage {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false, updatable = false)
     private Integer id;
 

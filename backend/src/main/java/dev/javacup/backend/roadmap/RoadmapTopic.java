@@ -3,6 +3,8 @@ package dev.javacup.backend.roadmap;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
@@ -13,10 +15,13 @@ import lombok.Setter;
 /**
  * A topic within a roadmap stage. Maps roadmap_topics exactly.
  *
- * priority is VARCHAR with a lowercase CHECK constraint in the DB, so it is mapped via
- * TopicPriorityConverter (Java uppercase enum <-> DB lowercase text) rather than
- * EnumType.STRING. stage_id is a plain FK value; topics are grouped under stages by the
- * service.
+ * id is a Postgres SERIAL — the database assigns it on insert — so it is mapped with
+ * GenerationType.IDENTITY. (Without this, Hibernate expects the id to be set manually and
+ * rejects new inserts.)
+ *
+ * priority is VARCHAR with a lowercase CHECK constraint in the DB, mapped via
+ * TopicPriorityConverter (Java uppercase enum <-> DB lowercase text). stage_id is a plain
+ * FK value; topics are grouped under stages by the service.
  */
 @Entity
 @Table(name = "roadmap_topics")
@@ -26,6 +31,7 @@ import lombok.Setter;
 public class RoadmapTopic {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id", nullable = false, updatable = false)
     private Integer id;
 
