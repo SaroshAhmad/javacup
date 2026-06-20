@@ -7,11 +7,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Assembles the public roadmap: stages in order, each with its topics in order.
+ * Assembles the PUBLIC roadmap: stages in order, each with its PUBLISHED topics in order.
+ * Draft topics are never returned here — they appear only in the admin views.
  *
- * Fetches all stages and all topics in two queries, then groups topics under stages in
- * memory — avoiding an N+1 query per stage. The roadmap is small (5 stages, tens of
- * topics), so loading it whole is cheap and simplest for the overview endpoint.
+ * Fetches published topics and all stages in two queries, grouping in memory to avoid N+1.
  */
 @Service
 public class RoadmapService {
@@ -27,7 +26,7 @@ public class RoadmapService {
     @Transactional(readOnly = true)
     public List<StageResponse> fullRoadmap() {
         Map<Integer, List<TopicResponse>> topicsByStage = topicRepository
-                .findAllByOrderByStageIdAscOrderIndexAsc()
+                .findByPublishedTrueOrderByStageIdAscOrderIndexAsc()
                 .stream()
                 .collect(Collectors.groupingBy(
                         RoadmapTopic::getStageId,
@@ -46,6 +45,7 @@ public class RoadmapService {
                 .orElseThrow(() -> new StageNotFoundException(orderIndex));
         List<TopicResponse> topics = topicRepository.findByStageIdOrderByOrderIndexAsc(stage.getId())
                 .stream()
+                .filter(RoadmapTopic::isPublished)
                 .map(TopicResponse::of)
                 .toList();
         return StageResponse.of(stage, topics);

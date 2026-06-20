@@ -38,7 +38,7 @@ export default function AdminRoadmap() {
   // only set after the await boundary, so it is not a synchronous effect setState.
   const refresh = useCallback(async () => {
     try {
-      const data = await apiFetch('/api/v1/roadmap');
+      const data = await apiFetch('/api/v1/admin/roadmap/topics');
       setStages(data ?? []);
       setError(null);
     } catch {
@@ -52,7 +52,7 @@ export default function AdminRoadmap() {
     let active = true;
     (async () => {
       try {
-        const data = await apiFetch('/api/v1/roadmap');
+        const data = await apiFetch('/api/v1/admin/roadmap/topics');
         if (!active) return;
         setStages(data ?? []);
         setError(null);
@@ -91,6 +91,16 @@ export default function AdminRoadmap() {
       await refresh();
     } catch {
       setError('Could not delete the topic.');
+    }
+  }
+
+  async function handleTogglePublish(topic) {
+    const action = topic.published ? 'unpublish' : 'publish';
+    try {
+      await apiFetch(`/api/v1/admin/roadmap/topics/${topic.id}/${action}`, { method: 'PUT' });
+      await refresh();
+    } catch {
+      setError(`Could not ${action} the topic.`);
     }
   }
 
@@ -180,6 +190,7 @@ export default function AdminRoadmap() {
                         topic={topic}
                         onEdit={(t) => setEditor({ open: true, stageId: stage.id, topic: t })}
                         onDelete={handleDelete}
+                        onTogglePublish={handleTogglePublish}
                       />
                     ))}
                   </div>

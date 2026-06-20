@@ -2,16 +2,19 @@ package dev.javacup.backend.roadmap;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Admin-only mutations for roadmap topics: create, update, delete, reorder. Authorization
- * (requireAdmin) is enforced in the controller before any of these run.
+ * Admin-only roadmap topic operations: list-all (incl. drafts), create, update, delete,
+ * reorder, and publish/unpublish. Authorization (requireAdmin) is enforced in the
+ * controller before any of these run.
  *
- * New topics are appended to the end of their stage (order_index = current max + 1).
- * Reordering rewrites order_index to match the supplied id order. Stage existence is
- * validated so topics can't be attached to a non-existent stage.
+ * New topics are created as DRAFT (published = false) and appended to the end of their
+ * stage; the admin publishes them when ready. Reordering rewrites order_index to match the
+ * supplied id order.
  */
 @Service
 public class RoadmapAdminService {
@@ -22,6 +25,22 @@ public class RoadmapAdminService {
     public RoadmapAdminService(RoadmapStageRepository stageRepository, RoadmapTopicRepository topicRepository) {
         this.stageRepository = stageRepository;
         this.topicRepository = topicRepository;
+    }
+
+    /** All stages with ALL their topics (drafts included) — the admin view. */
+    @Transactional(readOnly = true)
+    public List<StageResponse> adminRoadmap() {
+        Map<Integer, List<TopicResponse>> topicsByStage = topicRepository
+                .findAllByOrderByStageIdAscOrderIndexAsc()
+                .stream()
+                .collect(Collectors.groupingBy(
+                        RoadmapTopic::getStageId,
+                        Collectors.mapping(TopicResponse::of, Collectors.toList())
+                ));
+        return stageRepository.findAllByOrderByOrderIndexAsc()
+                .stream()
+                .map(stage -> StageResponse.of(stage, topicsByStage.getOrDefault(stage.getId(), List.of())))
+                .toList();
     }
 
     @Transactional
@@ -39,6 +58,7 @@ public class RoadmapAdminService {
         topic.setDescription(normalizeDescription(request.description()));
         topic.setPriority(request.priority());
         topic.setOrderIndex(nextIndex);
+        topic.setPublished(false); // new topics start as drafts
         OffsetDateTime now = OffsetDateTime.now();
         topic.setCreatedAt(now);
         topic.setUpdatedAt(now);
@@ -60,6 +80,15 @@ public class RoadmapAdminService {
     }
 
     @Transactional
+    public TopicResponse setPublished(Integer topicId, boolean published) {
+        RoadmapTopic topic = topicRepository.findById(topicId)
+                .orElseThrow(() -> new TopicNotFoundException(topicId));
+        topic.setPublished(published);
+        topic.setUpdatedAt(OffsetDateTime.now());
+        return TopicResponse.of(topicRepository.save(topic));
+    }
+
+    @Transactional
     public void delete(Integer topicId) {
         if (!topicRepository.existsById(topicId)) {
             throw new TopicNotFoundException(topicId);
@@ -72,7 +101,6 @@ public class RoadmapAdminService {
         requireStage(request.stageId());
         List<RoadmapTopic> stageTopics = topicRepository.findByStageIdOrderByOrderIndexAsc(request.stageId());
 
-        // Validate the supplied id set matches the stage's topics exactly.
         if (stageTopics.size() != request.orderedTopicIds().size()
                 || !stageTopics.stream().map(RoadmapTopic::getId).toList()
                         .containsAll(request.orderedTopicIds())) {

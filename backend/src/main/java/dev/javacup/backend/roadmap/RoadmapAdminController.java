@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -15,14 +16,15 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Admin-only roadmap topic management (F-01 content, managed in-app per the product
- * vision). Every method checks admin authorization first via AdminService; non-admins
- * receive 403. These sit under /api/v1/admin/** which SecurityConfig requires
- * authentication for (and the admin check narrows it to admins).
+ * Admin-only roadmap topic management. Every method checks admin authorization first via
+ * AdminService; non-admins receive 403.
  *
- *  POST   /api/v1/admin/roadmap/topics            create a topic (appended to its stage)
+ *  GET    /api/v1/admin/roadmap/topics            all stages + ALL topics (incl. drafts)
+ *  POST   /api/v1/admin/roadmap/topics            create a draft topic
  *  PUT    /api/v1/admin/roadmap/topics/{id}       update a topic
  *  DELETE /api/v1/admin/roadmap/topics/{id}       delete a topic
+ *  PUT    /api/v1/admin/roadmap/topics/{id}/publish    publish a topic
+ *  PUT    /api/v1/admin/roadmap/topics/{id}/unpublish  return a topic to draft
  *  PUT    /api/v1/admin/roadmap/topics/reorder    reorder topics within a stage
  */
 @RestController
@@ -35,6 +37,12 @@ public class RoadmapAdminController {
     public RoadmapAdminController(AdminService adminService, RoadmapAdminService roadmapAdminService) {
         this.adminService = adminService;
         this.roadmapAdminService = roadmapAdminService;
+    }
+
+    @GetMapping
+    public List<StageResponse> all(Authentication authentication) {
+        adminService.requireAdmin(authentication);
+        return roadmapAdminService.adminRoadmap();
     }
 
     @PostMapping
@@ -50,6 +58,18 @@ public class RoadmapAdminController {
                                 @Valid @RequestBody TopicWriteRequest request) {
         adminService.requireAdmin(authentication);
         return roadmapAdminService.update(id, request);
+    }
+
+    @PutMapping("/{id}/publish")
+    public TopicResponse publish(Authentication authentication, @PathVariable Integer id) {
+        adminService.requireAdmin(authentication);
+        return roadmapAdminService.setPublished(id, true);
+    }
+
+    @PutMapping("/{id}/unpublish")
+    public TopicResponse unpublish(Authentication authentication, @PathVariable Integer id) {
+        adminService.requireAdmin(authentication);
+        return roadmapAdminService.setPublished(id, false);
     }
 
     @DeleteMapping("/{id}")

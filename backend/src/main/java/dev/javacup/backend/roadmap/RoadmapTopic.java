@@ -15,13 +15,11 @@ import lombok.Setter;
 /**
  * A topic within a roadmap stage. Maps roadmap_topics exactly.
  *
- * id is a Postgres SERIAL — the database assigns it on insert — so it is mapped with
- * GenerationType.IDENTITY. (Without this, Hibernate expects the id to be set manually and
- * rejects new inserts.)
- *
- * priority is VARCHAR with a lowercase CHECK constraint in the DB, mapped via
- * TopicPriorityConverter (Java uppercase enum <-> DB lowercase text). stage_id is a plain
- * FK value; topics are grouped under stages by the service.
+ * id is a Postgres SERIAL (GenerationType.IDENTITY). priority is VARCHAR with a lowercase
+ * CHECK constraint, mapped via TopicPriorityConverter. `published` is the draft/publish
+ * flag: topics are composed as drafts (false) and only appear on the public roadmap once
+ * published (true). stage_id is a plain FK value; topics are grouped under stages by the
+ * service.
  */
 @Entity
 @Table(name = "roadmap_topics")
@@ -50,6 +48,9 @@ public class RoadmapTopic {
 
     @Column(name = "order_index", nullable = false)
     private Integer orderIndex;
+
+    @Column(name = "published", nullable = false)
+    private boolean published;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private OffsetDateTime createdAt;
