@@ -10,11 +10,11 @@ import { AuthContext } from './authContext';
  * reloads), then subscribes to Supabase auth changes. Every login, logout, and silent
  * token refresh updates state here, and the whole app re-renders accordingly.
  *
- * When a session is present, it also performs the backend handshake: POST /api/v1/auth/sync
- * confirms the user to our backend and reports whether onboarding is still required. The
- * result is exposed as `onboardingRequired` so routing (e.g. send new users to onboarding
- * once that exists — Phase D) can react to it. Sync failures are non-fatal: the user stays
- * logged in; we just don't have a synced status yet.
+ * When a session is present it performs the backend handshake (POST /api/v1/auth/sync),
+ * which reports whether onboarding is required and whether the user is an admin. Both are
+ * exposed on the context (`onboardingRequired`, `isAdmin`) so routing and admin-only UI
+ * can react without extra requests. Sync failures are non-fatal: the user stays logged in;
+ * status simply stays unknown until the next attempt.
  *
  * `loading` is true until the initial session check resolves; `syncing` is true while the
  * backend handshake is in flight.
@@ -24,16 +24,17 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [onboardingRequired, setOnboardingRequired] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  // Backend handshake — runs whenever we gain a session.
   const runSync = useCallback(async () => {
     setSyncing(true);
     try {
       const res = await apiFetch('/api/v1/auth/sync', { method: 'POST' });
       setOnboardingRequired(res?.onboardingRequired ?? null);
+      setIsAdmin(res?.isAdmin ?? false);
     } catch {
-      // Non-fatal: keep the user logged in; status stays unknown until next attempt.
       setOnboardingRequired(null);
+      setIsAdmin(false);
     } finally {
       setSyncing(false);
     }
@@ -52,11 +53,13 @@ export function AuthProvider({ children }) {
     const { data: sub } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession);
       setLoading(false);
-      // Re-sync on sign-in / token refresh; clear status on sign-out.
       if (newSession && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION')) {
         runSync();
       }
-      if (!newSession) setOnboardingRequired(null);
+      if (!newSession) {
+        setOnboardingRequired(null);
+        setIsAdmin(false);
+      }
     });
 
     return () => {
@@ -69,6 +72,7 @@ export function AuthProvider({ children }) {
     await supabase.auth.signOut();
     setSession(null);
     setOnboardingRequired(null);
+    setIsAdmin(false);
   }, []);
 
   const value = useMemo(
@@ -79,10 +83,11 @@ export function AuthProvider({ children }) {
       loading,
       syncing,
       onboardingRequired,
+      isAdmin,
       refreshSync: runSync,
       signOut,
     }),
-    [session, loading, syncing, onboardingRequired, runSync, signOut],
+    [session, loading, syncing, onboardingRequired, isAdmin, runSync, signOut],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
