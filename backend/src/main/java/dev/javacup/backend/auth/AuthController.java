@@ -16,9 +16,10 @@ import org.springframework.web.bind.annotation.RestController;
  * login/signup. We do NOT create a profile here: a profile is only valid once the user
  * has chosen a background tag during onboarding (profiles.background_tag is NOT NULL).
  * Instead, sync confirms the token is valid and reports whether a complete profile
- * already exists, so the frontend knows whether to show the app or route to onboarding.
+ * already exists (so the frontend knows whether to route to onboarding) and whether the
+ * user is an admin (so the frontend can reveal admin-only UI without a second request).
  *
- * The profile row itself is created in one shot at the end of onboarding (a later step).
+ * The profile row itself is created in one shot at the end of onboarding.
  */
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -36,6 +37,7 @@ public class AuthController {
         Optional<Profile> profile = profileRepository.findByUserId(userId);
         boolean hasProfile = profile.isPresent();
         boolean onboardingRequired = profile.map(p -> !p.isOnboardingDone()).orElse(true);
-        return new AuthSyncResponse(userId, hasProfile, onboardingRequired);
+        boolean isAdmin = profile.map(Profile::isAdmin).orElse(false);
+        return new AuthSyncResponse(userId, hasProfile, onboardingRequired, isAdmin);
     }
 }
