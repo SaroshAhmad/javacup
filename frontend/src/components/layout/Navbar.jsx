@@ -12,9 +12,10 @@ import ProfileMenu from './ProfileMenu';
  * (avatar + dropdown with logout). State comes from useAuth(); while the initial session
  * check is loading, the auth slot is left empty to avoid flashing the wrong control.
  *
- * "Contribute" opens the conversion modal (ContributeModal) and carries the pulsing green
- * "exciting" badge. (Phase B+: the modal trigger will skip straight to the workflow for
- * logged-in users.)
+ * "Contribute" is auth-aware too: logged-out visitors get the conversion modal
+ * (ContributeModal); logged-in members go straight to the /contribute page. Both the
+ * desktop and mobile triggers route through `triggerContribute`, so the behaviour stays
+ * consistent. It carries the pulsing green "exciting" badge.
  */
 const NAV_LINKS = [
   { to: '/', label: 'Home', end: true },
@@ -59,9 +60,14 @@ export default function Navbar() {
     setOpen(false);
     navigate(path);
   }
+  // Auth-aware contribute: members go to the page, visitors get the conversion modal.
   function triggerContribute() {
     setOpen(false);
-    openContribute();
+    if (isAuthenticated) {
+      navigate('/contribute');
+    } else {
+      openContribute();
+    }
   }
   async function handleMobileLogout() {
     setOpen(false);

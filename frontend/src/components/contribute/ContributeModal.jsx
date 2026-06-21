@@ -63,13 +63,15 @@ export default function ContributeModal() {
 
   if (!isOpen) return null;
 
+  // Carry the user's intent (they clicked "Contribute") through auth, so they land back
+  // on /contribute afterwards rather than the generic default.
   function goSignup() {
     close();
-    navigate('/signup');
+    navigate('/signup?redirect=%2Fcontribute');
   }
   function goLogin() {
     close();
-    navigate('/login');
+    navigate('/login?redirect=%2Fcontribute');
   }
 
   return (

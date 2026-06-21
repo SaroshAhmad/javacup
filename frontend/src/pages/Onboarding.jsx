@@ -4,6 +4,7 @@ import Button from '../components/ui/Button';
 import { useAuth } from '../context/useAuth';
 import { apiFetch } from '../lib/api';
 import { BACKGROUND_TAGS, tagByKey } from '../lib/onboarding';
+import { consumeRedirect, DEFAULT_DESTINATION } from '../lib/postAuthRedirect';
 
 /**
  * Onboarding (/onboarding) — the 3-step guide a new member completes once, right after
@@ -12,7 +13,7 @@ import { BACKGROUND_TAGS, tagByKey } from '../lib/onboarding';
  *
  * On completion it POSTs to /api/v1/users/onboarding (which creates the profile row),
  * refreshes the auth sync (so onboardingRequired flips to false app-wide), and routes to
- * the roadmap. Step 3 is a welcome rather than "read a post" because community posts do
+ * the member's intended destination (a stored return-path, e.g. /contribute) or the roadmap. Step 3 is a welcome rather than "read a post" because community posts do
  * not exist yet — kept honest; swap in a real post when discussions ship.
  *
  * This screen assumes the user is authenticated; routing guards that (it is only reached
@@ -55,7 +56,10 @@ export default function Onboarding() {
         body: JSON.stringify({ backgroundTag: selectedKey }),
       });
       await refreshSync(); // onboardingRequired → false everywhere
-      navigate('/roadmap');
+      // Land where the member originally intended (e.g. /contribute) if that intent was
+      // carried through signup; otherwise the default roadmap.
+      const destination = consumeRedirect() || DEFAULT_DESTINATION;
+      navigate(destination);
     } catch {
       setError('Something went wrong saving your profile. Please try again.');
       setSubmitting(false);
