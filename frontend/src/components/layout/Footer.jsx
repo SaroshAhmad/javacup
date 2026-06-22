@@ -1,8 +1,15 @@
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
+import { useAuth } from '../../context/useAuth';
+import { useContributeModal } from '../../context/useContributeModal';
 
 /**
  * Footer — navigation + trust signals (Brand Identity v2.0, §7.4 / S8).
  * Logo + tagline, organised link columns, community guidelines, GitHub.
+ *
+ * "Contribute" is auth-aware and matches the navbar exactly: logged-in members go to the
+ * /contribute page, logged-out visitors get the conversion modal. It is therefore rendered
+ * as an action (button) rather than a plain link, while every other footer entry stays a
+ * normal Link.
  */
 const COLUMNS = [
   {
@@ -15,7 +22,7 @@ const COLUMNS = [
   {
     heading: 'Community',
     links: [
-      { label: 'Contribute', to: '/contribute', badge: 'exciting' },
+      { label: 'Contribute', contribute: true, badge: 'exciting' },
       { label: 'Guidelines', to: '/guidelines' },
     ],
   },
@@ -23,7 +30,22 @@ const COLUMNS = [
 
 const GITHUB_URL = 'https://github.com/SaroshAhmad/javacup';
 
+const linkClass =
+  'text-body-md text-text-secondary transition-colors duration-150 hover:text-text-primary';
+
 export default function Footer() {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const { open: openContribute } = useContributeModal();
+
+  function handleContribute() {
+    if (isAuthenticated) {
+      navigate('/contribute');
+    } else {
+      openContribute();
+    }
+  }
+
   return (
     <footer className="border-t border-border-subtle">
       <div className="mx-auto max-w-container px-4 py-12">
@@ -48,12 +70,15 @@ export default function Footer() {
                   {col.links.map((l) => (
                     <li key={l.label}>
                       <span className="relative inline-block">
-                        <Link
-                          to={l.to}
-                          className="text-body-md text-text-secondary transition-colors duration-150 hover:text-text-primary"
-                        >
-                          {l.label}
-                        </Link>
+                        {l.contribute ? (
+                          <button type="button" onClick={handleContribute} className={linkClass}>
+                            {l.label}
+                          </button>
+                        ) : (
+                          <Link to={l.to} className={linkClass}>
+                            {l.label}
+                          </Link>
+                        )}
                         {l.badge ? (
                           <span
                             className="pointer-events-none absolute -top-2.5 -right-7 animate-badge-pulse font-mono text-[9px] font-medium tracking-wide text-success-bright"

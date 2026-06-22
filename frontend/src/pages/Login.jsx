@@ -1,16 +1,23 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useLocation } from 'react-router';
 import Button from '../components/ui/Button';
 import { Field, Input } from '../components/ui/Field';
 import AuthShell from '../components/auth/AuthShell';
 import { supabase } from '../lib/supabase';
+import {
+  redirectFromSearch,
+  storeRedirect,
+  consumeRedirect,
+  DEFAULT_DESTINATION,
+} from '../lib/postAuthRedirect';
 
 /**
  * Login (/login) — email + password sign-in, plus Google OAuth.
  *
- * Wired to Supabase (Phase B). On success we navigate home; the AuthProvider is
- * subscribed to auth changes, so the navbar and the rest of the app update to the
- * logged-in state automatically — no manual state passing needed here.
+ * Wired to Supabase (Phase B). On success we navigate to the post-auth destination: a
+ * `?redirect=` target if the user was sent here from a specific intent (e.g. the Contribute
+ * modal), otherwise the default roadmap. The AuthProvider is subscribed to auth changes, so
+ * the navbar and the rest of the app update to the logged-in state automatically.
  */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -24,6 +31,10 @@ function validate(data) {
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const redirectTarget = redirectFromSearch(location.search);
+  const signupHref = redirectTarget ? `/signup?redirect=${encodeURIComponent(redirectTarget)}` : '/signup';
+
   const [errors, setErrors] = useState({});
   const [pending, setPending] = useState(false);
 
@@ -56,17 +67,19 @@ export default function Login() {
     setPending(false);
 
     if (error) {
-      // Supabase returns "Invalid login credentials" for both wrong-password and
-      // unconfirmed-email — keep the message generic, don't leak which.
       setErrors({ form: error.message });
       return;
     }
-    // Post-login destination — the roadmap is the core "what's next" surface for a
-    // returning learner (ADR 0007). Becomes the logged-in home in Phase 2.
-    navigate('/roadmap');
+    // Prefer an explicit ?redirect intent, then any stored intent (e.g. carried from a
+    // signup that began at Contribute), else the default roadmap.
+    const destination = redirectTarget || consumeRedirect() || DEFAULT_DESTINATION;
+    navigate(destination);
   }
 
   async function handleGoogle() {
+    // Carry the intent across the OAuth round trip via sessionStorage (the OAuth redirect
+    // URL returns to the app root without our query param).
+    if (redirectTarget) storeRedirect(redirectTarget);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/` },
@@ -84,7 +97,7 @@ export default function Login() {
       footer={
         <>
           New here?{' '}
-          <Link to="/signup" className="text-amber-400 transition-colors hover:text-amber-300">
+          <Link to={signupHref} className="text-amber-400 transition-colors hover:text-amber-300">
             Create a free account
           </Link>
         </>

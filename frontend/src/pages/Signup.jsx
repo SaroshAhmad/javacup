@@ -1,21 +1,21 @@
 import { useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import Button from '../components/ui/Button';
 import { Field, Input } from '../components/ui/Field';
 import AuthShell from '../components/auth/AuthShell';
 import { supabase } from '../lib/supabase';
+import { redirectFromSearch, storeRedirect } from '../lib/postAuthRedirect';
 
 /**
  * Signup (/signup) — create an account with email + password, or Google OAuth.
  *
- * Wired to Supabase (Phase B). On submit we call supabase.auth.signUp; with email
- * confirmation ON (the Supabase default and what the architecture doc specifies), the
- * user must click a link in their inbox before they can log in — so success shows a
- * "check your email" state rather than logging them straight in.
+ * Wired to Supabase (Phase B). With email confirmation ON, the user must click a link in
+ * their inbox before logging in — so success shows a "check your email" state.
  *
- * Background-tag selection happens AFTER confirmation, in onboarding (Phase D) — kept
- * off this form so signup stays frictionless. The name is stored in user metadata now
- * and mirrored into the profiles row later.
+ * If the user arrived from a specific intent (e.g. the Contribute modal), a `?redirect=`
+ * target is present. Because the email-confirmation link reopens the app WITHOUT that query
+ * param, we persist the target to sessionStorage at submit time; it is then consumed at the
+ * end of onboarding so the new member lands where they originally intended.
  */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD = 8;
@@ -31,6 +31,10 @@ function validate(data) {
 }
 
 export default function Signup() {
+  const location = useLocation();
+  const redirectTarget = redirectFromSearch(location.search);
+  const loginHref = redirectTarget ? `/login?redirect=${encodeURIComponent(redirectTarget)}` : '/login';
+
   const [errors, setErrors] = useState({});
   const [pending, setPending] = useState(false);
   const [sentTo, setSentTo] = useState(null);
@@ -69,10 +73,14 @@ export default function Signup() {
       setErrors({ form: error.message });
       return;
     }
+    // Persist the intended destination so it survives the email-confirmation round trip
+    // and can be consumed at the end of onboarding.
+    if (redirectTarget) storeRedirect(redirectTarget);
     setSentTo(email);
   }
 
   async function handleGoogle() {
+    if (redirectTarget) storeRedirect(redirectTarget);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${window.location.origin}/` },
@@ -80,7 +88,6 @@ export default function Signup() {
     if (error) setErrors({ form: error.message });
   }
 
-  // Success state — account created, confirmation email sent.
   if (sentTo) {
     return (
       <AuthShell
@@ -99,7 +106,7 @@ export default function Signup() {
         <p className="text-center text-body-sm text-text-secondary">
           Didn’t get it? Check your spam folder — it can take a minute to arrive.
         </p>
-        <Button as={Link} to="/login" variant="secondary" className="mt-4 w-full">
+        <Button as={Link} to={loginHref} variant="secondary" className="mt-4 w-full">
           Go to log in
         </Button>
       </AuthShell>
@@ -116,7 +123,7 @@ export default function Signup() {
       footer={
         <>
           Already have an account?{' '}
-          <Link to="/login" className="text-amber-400 transition-colors hover:text-amber-300">
+          <Link to={loginHref} className="text-amber-400 transition-colors hover:text-amber-300">
             Log in
           </Link>
         </>
